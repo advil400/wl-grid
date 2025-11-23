@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>W+L</title>
+  <title>Circle Logo Grid Playground</title>
   <style>
     :root {
       --grid-size: 5;
@@ -177,7 +177,7 @@
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 0.4rem;
+      gap: 0.35rem;
     }
 
     .hint {
@@ -268,10 +268,31 @@
       outline-offset: 2px;
     }
 
-    @media (max-width: 400px) {
-      .app {
-        padding: 1.25rem 1rem 1rem;
+    @media (max-width: 720px) {
+      body {
+        padding: 1rem;
       }
+      .app {
+        max-width: 100%;
+      }
+      .logo-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+      .brand-text {
+        font-size: clamp(1.6rem, 7vw, 2.4rem);
+        white-space: normal;
+      }
+      .controls {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .btn-row,
+      .music-tweaks {
+        width: 100%;
+      }
+    }
       .app-title {
         font-size: 1rem;
       }
@@ -303,14 +324,14 @@
         <section class="controls">
       <div class="btn-row">
         <button id="randomPattern" type="button">Random</button>
-        <button id="musicToggle" type="button">Music</button>
-        <button id="animateToggle" type="button">Play</button>
-        <button id="plusPreset" type="button">+</button>
+        <button id="musicToggle" type="button">Play<\/button>
+        <button id="animateToggle" type="button">Life<\/button>
+        <button id="plusPreset" type="button">+ Preset</button>
         <button id="clearGrid" type="button" class="primary">Clear</button>
       </div>
       <div class="control-meta">
-        <span class="hint">Click circles to toggle. Tap grid size to cycle between Sizes.</span>
-        <div class="music-tweaks">
+        <span class="hint">Click circles to toggle. Tap grid size to cycle 5 / 7 / 9.</span>
+                <div class="music-tweaks">
           <label>
             <input type="checkbox" id="quantizeToggle" checked />
             Quantize
@@ -331,6 +352,17 @@
             </select>
           </label>
           <label>
+            Scale/Chord
+            <select id="scaleSelect">
+              <option value="pent" selected>Pentatonic</option>
+              <option value="major">Major</option>
+              <option value="minor">Minor</option>
+              <option value="lydian">Lydian</option>
+              <option value="maj7">Maj7</option>
+              <option value="min7">Min7</option>
+            </select>
+          </label>
+          <label>
             Wave
             <select id="waveSelect">
               <option value="sine" selected>Sine</option>
@@ -339,12 +371,20 @@
               <option value="sawtooth">Saw</option>
             </select>
           </label>
+          <label>
+            Room
+            <input type="range" id="spaceSlider" min="0" max="1" step="0.05" value="0.4" />
+          </label>
+          <label>
+            <input type="checkbox" id="arpToggle" />
+            Arp
+          </label>
         </div>
       </div>
     </section>
   </main>
 
-        <script>
+          <script>
     (function () {
       const gridEl = document.getElementById("circleGrid");
       const stepIndicatorsEl = document.getElementById("stepIndicators");
@@ -362,6 +402,9 @@
       const bpmValue = document.getElementById("bpmValue");
       const keySelect = document.getElementById("keySelect");
       const waveSelect = document.getElementById("waveSelect");
+      const scaleSelect = document.getElementById("scaleSelect");
+      const spaceSlider = document.getElementById("spaceSlider");
+      const arpToggle = document.getElementById("arpToggle");
 
       const GRID_SIZES = [5, 7, 9];
       let gridSizeIndex = 0;
@@ -372,7 +415,11 @@
       const STEP_INTERVAL_MS = 420;
 
       let audioCtx = null;
-      let sequenceBoard = null;
+      let masterGain = null;
+      let effectSendGain = null;
+      let delayNode = null;
+      let feedbackGain = null;
+
       let sequenceTimer = null;
       let isSequencing = false;
       let currentStep = 0;
@@ -385,10 +432,23 @@
         G: 392.0,
       };
 
+      const SCALE_PATTERNS = {
+        pent: [0, 2, 4, 7, 9],
+        major: [0, 2, 4, 5, 7, 9, 11],
+        minor: [0, 2, 3, 5, 7, 8, 10],
+        lydian: [0, 2, 4, 6, 7, 9, 11],
+        maj7: [0, 4, 7, 11],
+        min7: [0, 3, 7, 10],
+      };
+
       let bpm = 90;
       let quantizeEnabled = true;
       let currentKey = "A";
       let currentWave = "sine";
+      let currentScale = "pent";
+      let spaceAmount = 0.4;
+      let arpEnabled = false;
+      let arpPhase = 0;
 
       function idx(row, col) {
         return row * gridSize + col;
@@ -601,7 +661,7 @@
         if (!animationTimer) return;
         clearInterval(animationTimer);
         animationTimer = null;
-        animateBtn.textContent = "Play";
+        animateBtn.textContent = "Life";
         animateBtn.setAttribute("aria-pressed", "false");
       }
 
@@ -620,16 +680,38 @@
         if (!audioCtx) {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
+        setupAudioGraph();
         return audioCtx;
+      }
+
+      function setupAudioGraph() {
+        if (!audioCtx || masterGain) return;
+        const ctx = audioCtx;
+
+        masterGain = ctx.createGain();
+        effectSendGain = ctx.createGain();
+        delayNode = ctx.createDelay();
+        feedbackGain = ctx.createGain();
+
+        masterGain.gain.value = 0.9;
+        delayNode.delayTime.value = 0.28;
+        effectSendGain.gain.value = spaceAmount;
+        feedbackGain.gain.value = 0.3 + 0.6 * spaceAmount;
+
+        effectSendGain.connect(delayNode);
+        delayNode.connect(feedbackGain);
+        feedbackGain.connect(delayNode);
+        delayNode.connect(masterGain);
+        masterGain.connect(ctx.destination);
       }
 
       function rowToFrequency(row) {
         const size = gridSize;
         const indexFromBottom = size - 1 - row;
         const baseFreq = KEY_FREQUENCIES[currentKey] || 220;
-        const pentatonic = [0, 2, 4, 7, 9];
-        const octave = Math.floor(indexFromBottom / pentatonic.length);
-        const degree = pentatonic[indexFromBottom % pentatonic.length] + octave * 12;
+        const scale = SCALE_PATTERNS[currentScale] || SCALE_PATTERNS.pent;
+        const octave = Math.floor(indexFromBottom / scale.length);
+        const degree = scale[indexFromBottom % scale.length] + octave * 12;
         return baseFreq * Math.pow(2, degree / 12);
       }
 
@@ -644,7 +726,14 @@
         osc.frequency.value = freq;
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        if (masterGain) {
+          gain.connect(masterGain);
+        } else {
+          gain.connect(ctx.destination);
+        }
+        if (effectSendGain) {
+          gain.connect(effectSendGain);
+        }
 
         gain.gain.setValueAtTime(0.0, now);
         gain.gain.linearRampToValueAtTime(0.4, now + 0.02);
@@ -663,16 +752,42 @@
       }
 
       function runSequenceStep() {
-        if (!sequenceBoard) return;
         const size = gridSize;
         const col = currentStep;
 
         updateStepIndicators(col);
 
+        const activeRows = [];
         for (let r = 0; r < size; r++) {
-          if (sequenceBoard[r][col]) {
-            const freq = rowToFrequency(r);
-            playNote(freq);
+          if (board[r][col]) {
+            activeRows.push(r);
+          }
+        }
+
+        if (activeRows.length > 0) {
+          if (arpEnabled) {
+            const sorted = activeRows.slice().sort((a, b) => a - b);
+            arpPhase++;
+            const baseIndex = arpPhase % sorted.length;
+            const notesToPlay = [sorted[baseIndex]];
+
+            if (sorted.length > 1) {
+              const offset = sorted.length > 3 ? 2 : 1;
+              const secondIndex = (baseIndex + offset) % sorted.length;
+              if (secondIndex !== baseIndex && Math.random() < 0.6) {
+                notesToPlay.push(sorted[secondIndex]);
+              }
+            }
+
+            for (const r of notesToPlay) {
+              const freq = rowToFrequency(r);
+              playNote(freq);
+            }
+          } else {
+            for (const r of activeRows) {
+              const freq = rowToFrequency(r);
+              playNote(freq);
+            }
           }
         }
 
@@ -695,21 +810,20 @@
           ctx.resume();
         }
 
-        sequenceBoard = board.map((row) => row.slice());
-        const hasAny = sequenceBoard.some((row) => row.some((cell) => cell));
+        const hasAny = board.some((row) => row.some((cell) => cell));
         if (!hasAny) {
           const size = gridSize;
-          sequenceBoard = makeEmptyBoard(size);
+          board = makeEmptyBoard(size);
           for (let i = 0; i < size; i++) {
-            sequenceBoard[i][i] = true;
+            board[i][i] = true;
           }
-          board = sequenceBoard.map((row) => row.slice());
           syncDomToBoard();
         }
 
         currentStep = 0;
+        arpPhase = 0;
         isSequencing = true;
-        musicBtn.textContent = "Stop Music";
+        musicBtn.textContent = "Stop";
         musicBtn.setAttribute("aria-pressed", "true");
         updateStepIndicators(currentStep);
         runSequenceStep();
@@ -721,7 +835,7 @@
         clearInterval(sequenceTimer);
         sequenceTimer = null;
         isSequencing = false;
-        musicBtn.textContent = "Music";
+        musicBtn.textContent = "Play";
         musicBtn.setAttribute("aria-pressed", "false");
         updateStepIndicators(-1);
       }
@@ -769,6 +883,31 @@
         currentWave = waveSelect.value;
         waveSelect.addEventListener("change", () => {
           currentWave = waveSelect.value;
+        });
+      }
+
+      if (scaleSelect) {
+        currentScale = scaleSelect.value;
+        scaleSelect.addEventListener("change", () => {
+          currentScale = scaleSelect.value;
+        });
+      }
+
+      if (spaceSlider) {
+        spaceAmount = parseFloat(spaceSlider.value) || spaceAmount;
+        spaceSlider.addEventListener("input", () => {
+          spaceAmount = parseFloat(spaceSlider.value) || 0;
+          if (effectSendGain && feedbackGain) {
+            effectSendGain.gain.value = spaceAmount;
+            feedbackGain.gain.value = 0.3 + 0.6 * spaceAmount;
+          }
+        });
+      }
+
+      if (arpToggle) {
+        arpEnabled = arpToggle.checked;
+        arpToggle.addEventListener("change", () => {
+          arpEnabled = arpToggle.checked;
         });
       }
 

@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>W+L</title>
+  <style>
+    :root {
+      --grid-size: 5;
+      --circle-stroke: 2px;
+      --circle-gap: 0.8rem;
+      --circle-color: #222;
+      --circle-fill: #222;
+      --bg: #f6f6f8;
+      --accent: #555;
+      --radius: 1.25rem;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #ffffff;
+      color: #111;
+    }
+
+        .app {
+      max-width: 640px;
+    }
+
+    .app-header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .brand-text {
+      flex: 1 1 auto;
+      font-size: clamp(2.2rem, 6vw, 3.2rem);
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      white-space: nowrap;
+      cursor: text;
+      outline: none;
+      border: none;
+      line-height: 1;
+    }
+
+    .app-title {
+      margin: 0;
+      font-size: 1.1rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .app-subtitle {
+      margin: 0.15rem 0 0;
+      font-size: 0.78rem;
+      color: #6b7280;
+    }
+
+        .grid-shell {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1rem;
+      padding: 0 0.25rem;
+    }
+
+            .grid {
+      width: 100%;
+      max-width: 360px;
+      margin: 0 auto;
+      aspect-ratio: 1 / 1;
+      display: grid;
+      grid-template-columns: repeat(var(--grid-size), 1fr);
+      grid-template-rows: repeat(var(--grid-size), 1fr);
+      gap: var(--circle-gap);
+      padding: 0.4rem;
+    }
+
+    .grid-and-steps {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .step-indicators {
+      display: grid;
+      grid-template-columns: repeat(var(--grid-size), 1fr);
+      margin-top: 0.35rem;
+      padding: 0 0.4rem;
+    }
+
+    .step-dot {
+      height: 6px;
+      width: 6px;
+      border-radius: 999px;
+      margin: 0 auto;
+      border: 1px solid rgba(15, 23, 42, 0.35);
+      background: transparent;
+      opacity: 0.45;
+      transition:
+        background 120ms ease,
+        transform 120ms ease,
+        border-color 120ms ease,
+        opacity 160ms ease;
+    }
+
+    .step-dot.active {
+      background: var(--circle-fill);
+      border-color: var(--circle-fill);
+      transform: translateY(-1px) scale(1.15);
+      opacity: 1;
+    }
+
+    .circle {
+      border-radius: 999px;
+      border: var(--circle-stroke) solid var(--circle-color);
+      background: transparent;
+      cursor: pointer;
+      transition:
+        background 140ms ease,
+        box-shadow 140ms ease,
+        transform 90ms ease,
+        border-color 140ms ease;
+      box-shadow: 0 0 0 0 transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+    }
+
+    .circle:hover {
+      box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
+    }
+
+    .circle:active {
+      transform: scale(0.96);
+    }
+
+    .circle.filled {
+      background: var(--circle-fill);
+      border-color: var(--circle-fill);
+      box-shadow: 0 0 0 0 transparent;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+
+        .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .control-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.4rem;
+    }
+
+    .hint {
+      font-size: 0.78rem;
+      color: #6b7280;
+    }
+
+    .music-tweaks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: #4b5563;
+    }
+
+    .music-tweaks label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .music-tweaks input[type="range"] {
+      max-width: 120px;
+    }
+
+    .music-tweaks select,
+    .music-tweaks input[type="checkbox"],
+    .music-tweaks input[type="range"] {
+      cursor: pointer;
+    }
+
+    button {
+      border-radius: var(--radius);
+      border: 1px solid rgba(148, 163, 184, 0.9);
+      padding: 0.4rem 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: #f9fafb;
+      color: var(--accent);
+      cursor: pointer;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition:
+        background 130ms ease,
+        border-color 130ms ease,
+        box-shadow 130ms ease,
+        transform 80ms ease;
+    }
+
+    button:hover {
+      background: #e5e7eb;
+      box-shadow: 0 9px 18px rgba(15, 23, 42, 0.12);
+    }
+
+    button:active {
+      transform: translateY(1px) scale(0.99);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
+    }
+
+    button.primary {
+      background: #111827;
+      color: #f9fafb;
+      border-color: #111827;
+    }
+
+    button.primary:hover {
+      background: #020617;
+      border-color: #020617;
+    }
+
+    .pill {
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.04);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      font-size: 0.72rem;
+      color: #6b7280;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pill:focus-visible {
+      outline: 2px solid #111827;
+      outline-offset: 2px;
+    }
+
+    @media (max-width: 400px) {
+      .app {
+        padding: 1.25rem 1rem 1rem;
+      }
+      .app-title {
+        font-size: 1rem;
+      }
+      .controls {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <button id="gridSizeToggle" type="button" class="pill">5 × 5 grid</button>
+    </header>
+
+        <section class="logo-row">
+      <div class="grid-shell">
+        <div class="grid-and-steps">
+          <div id="circleGrid" class="grid" aria-label="Interactive circle logo grid" role="grid"></div>
+          <div id="stepIndicators" class="step-indicators" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div id="brandText" class="brand-text" contenteditable="true" spellcheck="false">
+        Waking+Life
+      </div>
+    </section>
+
+        <section class="controls">
+      <div class="btn-row">
+        <button id="randomPattern" type="button">Random</button>
+        <button id="musicToggle" type="button">Music</button>
+        <button id="animateToggle" type="button">Play</button>
+        <button id="plusPreset" type="button">+</button>
+        <button id="clearGrid" type="button" class="primary">Clear</button>
+      </div>
+      <div class="control-meta">
+        <span class="hint">Click circles to toggle. Tap grid size to cycle between Sizes.</span>
+        <div class="music-tweaks">
+          <label>
+            <input type="checkbox" id="quantizeToggle" checked />
+            Quantize
+          </label>
+          <label>
+            BPM
+            <input type="range" id="bpmSlider" min="40" max="180" value="90" />
+            <span id="bpmValue">90</span>
+          </label>
+          <label>
+            Key
+            <select id="keySelect">
+              <option value="A" selected>A</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+              <option value="E">E</option>
+              <option value="G">G</option>
+            </select>
+          </label>
+          <label>
+            Wave
+            <select id="waveSelect">
+              <option value="sine" selected>Sine</option>
+              <option value="triangle">Triangle</option>
+              <option value="square">Square</option>
+              <option value="sawtooth">Saw</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </section>
+  </main>
+
+        <script>
+    (function () {
+      const gridEl = document.getElementById("circleGrid");
+      const stepIndicatorsEl = document.getElementById("stepIndicators");
+      const brandTextEl = document.getElementById("brandText");
+
+      const clearBtn = document.getElementById("clearGrid");
+      const plusPresetBtn = document.getElementById("plusPreset");
+      const randomBtn = document.getElementById("randomPattern");
+      const gridSizeBtn = document.getElementById("gridSizeToggle");
+      const animateBtn = document.getElementById("animateToggle");
+      const musicBtn = document.getElementById("musicToggle");
+
+      const quantizeToggle = document.getElementById("quantizeToggle");
+      const bpmSlider = document.getElementById("bpmSlider");
+      const bpmValue = document.getElementById("bpmValue");
+      const keySelect = document.getElementById("keySelect");
+      const waveSelect = document.getElementById("waveSelect");
+
+      const GRID_SIZES = [5, 7, 9];
+      let gridSizeIndex = 0;
+      let gridSize = GRID_SIZES[gridSizeIndex];
+
+      let board = makeEmptyBoard(gridSize);
+      let animationTimer = null;
+      const STEP_INTERVAL_MS = 420;
+
+      let audioCtx = null;
+      let sequenceBoard = null;
+      let sequenceTimer = null;
+      let isSequencing = false;
+      let currentStep = 0;
+
+      const KEY_FREQUENCIES = {
+        A: 220,
+        C: 261.63,
+        D: 293.66,
+        E: 329.63,
+        G: 392.0,
+      };
+
+      let bpm = 90;
+      let quantizeEnabled = true;
+      let currentKey = "A";
+      let currentWave = "sine";
+
+      function idx(row, col) {
+        return row * gridSize + col;
+      }
+
+      function makeEmptyBoard(size) {
+        return Array.from({ length: size }, () => Array(size).fill(false));
+      }
+
+      function updateGridLabel() {
+        gridSizeBtn.textContent = `${gridSize} × ${gridSize} grid`;
+      }
+
+      function updateGridSpacing() {
+        let gap;
+        let stroke;
+        if (gridSize <= 5) {
+          gap = "0.8rem";
+          stroke = "2px";
+        } else if (gridSize <= 7) {
+          gap = "0.6rem";
+          stroke = "1.8px";
+        } else if (gridSize <= 9) {
+          gap = "0.45rem";
+          stroke = "1.6px";
+        } else {
+          gap = "0.35rem";
+          stroke = "1.4px";
+        }
+        gridEl.style.setProperty("--circle-gap", gap);
+        gridEl.style.setProperty("--circle-stroke", stroke);
+      }
+
+      function updateBrandTextSize() {
+        if (!brandTextEl || !gridEl) return;
+        const rect = gridEl.getBoundingClientRect();
+        if (!rect.height) return;
+        const fontSize = Math.max(16, rect.height * 0.34);
+        brandTextEl.style.fontSize = `${fontSize}px`;
+      }
+
+      function buildStepIndicators() {
+        if (!stepIndicatorsEl) return;
+        stepIndicatorsEl.innerHTML = "";
+        for (let col = 0; col < gridSize; col++) {
+          const dot = document.createElement("div");
+          dot.className = "step-dot";
+          stepIndicatorsEl.appendChild(dot);
+        }
+      }
+
+      function buildGrid() {
+        gridEl.innerHTML = "";
+        document.documentElement.style.setProperty("--grid-size", gridSize);
+        updateGridSpacing();
+        board = makeEmptyBoard(gridSize);
+        buildStepIndicators();
+
+        for (let row = 0; row < gridSize; row++) {
+          for (let col = 0; col < gridSize; col++) {
+            const circle = document.createElement("button");
+            circle.className = "circle";
+            circle.type = "button";
+            circle.setAttribute("role", "gridcell");
+            circle.setAttribute("aria-pressed", "false");
+            circle.dataset.row = row;
+            circle.dataset.col = col;
+
+            circle.addEventListener("click", () => {
+              const filled = !board[row][col];
+              board[row][col] = filled;
+              circle.classList.toggle("filled", filled);
+              circle.setAttribute("aria-pressed", filled ? "true" : "false");
+            });
+
+            circle.addEventListener("keydown", (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                circle.click();
+              }
+            });
+
+            gridEl.appendChild(circle);
+          }
+        }
+
+        updateBrandTextSize();
+      }
+
+      function syncDomToBoard() {
+        const circles = gridEl.querySelectorAll(".circle");
+        let alive = 0;
+        for (let r = 0; r < gridSize; r++) {
+          for (let c = 0; c < gridSize; c++) {
+            const circle = circles[idx(r, c)];
+            if (!circle) continue;
+            if (board[r][c]) {
+              circle.classList.add("filled");
+              circle.setAttribute("aria-pressed", "true");
+              alive++;
+            } else {
+              circle.classList.remove("filled");
+              circle.setAttribute("aria-pressed", "false");
+            }
+          }
+        }
+        return alive;
+      }
+
+      function clearGrid() {
+        board = makeEmptyBoard(gridSize);
+        syncDomToBoard();
+      }
+
+      function applyPlusPreset() {
+        board = makeEmptyBoard(gridSize);
+        const mid = Math.floor(gridSize / 2);
+        for (let i = 0; i < gridSize; i++) {
+          board[mid][i] = true;
+          board[i][mid] = true;
+        }
+        syncDomToBoard();
+      }
+
+      function cycleGridSize() {
+        gridSizeIndex = (gridSizeIndex + 1) % GRID_SIZES.length;
+        gridSize = GRID_SIZES[gridSizeIndex];
+        stopAnimation();
+        stopSequencer();
+        buildGrid();
+        applyPlusPreset();
+        updateGridLabel();
+      }
+
+      function lifeStep(prev) {
+        const size = gridSize;
+        const next = makeEmptyBoard(size);
+        const dirs = [
+          [-1, -1], [-1, 0], [-1, 1],
+          [0, -1],           [0, 1],
+          [1, -1], [1, 0], [1, 1],
+        ];
+
+        for (let r = 0; r < size; r++) {
+          for (let c = 0; c < size; c++) {
+            let neighbors = 0;
+            for (const [dr, dc] of dirs) {
+              const nr = r + dr;
+              const nc = c + dc;
+              if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+              if (prev[nr][nc]) neighbors++;
+            }
+
+            const alive = prev[r][c];
+            next[r][c] = neighbors === 3 || (alive && neighbors === 2);
+          }
+        }
+
+        return next;
+      }
+
+      function generateLifePattern() {
+        const size = gridSize;
+        const density = size <= 5 ? 0.45 : size <= 9 ? 0.38 : 0.32;
+
+        board = makeEmptyBoard(size);
+        let aliveCount = 0;
+
+        for (let r = 0; r < size; r++) {
+          for (let c = 0; c < size; c++) {
+            if (Math.random() < density) {
+              board[r][c] = true;
+              aliveCount++;
+            }
+          }
+        }
+
+        if (aliveCount === 0) {
+          const mid = Math.floor(size / 2);
+          board[mid][mid] = true;
+        }
+
+        const steps = size <= 5 ? 3 : size <= 9 ? 4 : 5;
+        for (let i = 0; i < steps; i++) {
+          board = lifeStep(board);
+        }
+
+        const finalAlive = syncDomToBoard();
+        if (finalAlive === 0) {
+          applyPlusPreset();
+        }
+      }
+
+      function stepAnimationFrame() {
+        board = lifeStep(board);
+        const alive = syncDomToBoard();
+        if (alive === 0) {
+          stopAnimation();
+        }
+      }
+
+      function startAnimation() {
+        if (animationTimer) return;
+        animationTimer = setInterval(stepAnimationFrame, STEP_INTERVAL_MS);
+        animateBtn.textContent = "Pause";
+        animateBtn.setAttribute("aria-pressed", "true");
+      }
+
+      function stopAnimation() {
+        if (!animationTimer) return;
+        clearInterval(animationTimer);
+        animationTimer = null;
+        animateBtn.textContent = "Play";
+        animateBtn.setAttribute("aria-pressed", "false");
+      }
+
+      function toggleAnimation() {
+        if (animationTimer) {
+          stopAnimation();
+        } else {
+          if (syncDomToBoard() === 0) {
+            generateLifePattern();
+          }
+          startAnimation();
+        }
+      }
+
+      function getAudioContext() {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioCtx;
+      }
+
+      function rowToFrequency(row) {
+        const size = gridSize;
+        const indexFromBottom = size - 1 - row;
+        const baseFreq = KEY_FREQUENCIES[currentKey] || 220;
+        const pentatonic = [0, 2, 4, 7, 9];
+        const octave = Math.floor(indexFromBottom / pentatonic.length);
+        const degree = pentatonic[indexFromBottom % pentatonic.length] + octave * 12;
+        return baseFreq * Math.pow(2, degree / 12);
+      }
+
+      function playNote(freq) {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = currentWave;
+        osc.frequency.value = freq;
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        gain.gain.setValueAtTime(0.0, now);
+        gain.gain.linearRampToValueAtTime(0.4, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+        osc.start(now);
+        osc.stop(now + 0.8);
+      }
+
+      function updateStepIndicators(stepIndex) {
+        if (!stepIndicatorsEl) return;
+        const dots = stepIndicatorsEl.querySelectorAll(".step-dot");
+        dots.forEach((dot, i) => {
+          dot.classList.toggle("active", i === stepIndex);
+        });
+      }
+
+      function runSequenceStep() {
+        if (!sequenceBoard) return;
+        const size = gridSize;
+        const col = currentStep;
+
+        updateStepIndicators(col);
+
+        for (let r = 0; r < size; r++) {
+          if (sequenceBoard[r][col]) {
+            const freq = rowToFrequency(r);
+            playNote(freq);
+          }
+        }
+
+        currentStep = (currentStep + 1) % size;
+      }
+
+      function getStepIntervalMs() {
+        if (!quantizeEnabled) {
+          return 320;
+        }
+        return 60000 / bpm;
+      }
+
+      function startSequencer() {
+        if (isSequencing) return;
+        stopAnimation();
+
+        const ctx = getAudioContext();
+        if (ctx.state === "suspended") {
+          ctx.resume();
+        }
+
+        sequenceBoard = board.map((row) => row.slice());
+        const hasAny = sequenceBoard.some((row) => row.some((cell) => cell));
+        if (!hasAny) {
+          const size = gridSize;
+          sequenceBoard = makeEmptyBoard(size);
+          for (let i = 0; i < size; i++) {
+            sequenceBoard[i][i] = true;
+          }
+          board = sequenceBoard.map((row) => row.slice());
+          syncDomToBoard();
+        }
+
+        currentStep = 0;
+        isSequencing = true;
+        musicBtn.textContent = "Stop Music";
+        musicBtn.setAttribute("aria-pressed", "true");
+        updateStepIndicators(currentStep);
+        runSequenceStep();
+        sequenceTimer = setInterval(runSequenceStep, getStepIntervalMs());
+      }
+
+      function stopSequencer() {
+        if (!isSequencing) return;
+        clearInterval(sequenceTimer);
+        sequenceTimer = null;
+        isSequencing = false;
+        musicBtn.textContent = "Music";
+        musicBtn.setAttribute("aria-pressed", "false");
+        updateStepIndicators(-1);
+      }
+
+      function toggleSequencer() {
+        if (isSequencing) {
+          stopSequencer();
+        } else {
+          startSequencer();
+        }
+      }
+
+      if (bpmSlider && bpmValue) {
+        bpm = parseInt(bpmSlider.value, 10) || bpm;
+        bpmValue.textContent = bpm;
+        bpmSlider.addEventListener("input", () => {
+          bpm = parseInt(bpmSlider.value, 10) || bpm;
+          bpmValue.textContent = bpm;
+          if (isSequencing && quantizeEnabled) {
+            clearInterval(sequenceTimer);
+            sequenceTimer = setInterval(runSequenceStep, getStepIntervalMs());
+          }
+        });
+      }
+
+      if (quantizeToggle) {
+        quantizeEnabled = quantizeToggle.checked;
+        quantizeToggle.addEventListener("change", () => {
+          quantizeEnabled = quantizeToggle.checked;
+          if (isSequencing) {
+            clearInterval(sequenceTimer);
+            sequenceTimer = setInterval(runSequenceStep, getStepIntervalMs());
+          }
+        });
+      }
+
+      if (keySelect) {
+        currentKey = keySelect.value;
+        keySelect.addEventListener("change", () => {
+          currentKey = keySelect.value;
+        });
+      }
+
+      if (waveSelect) {
+        currentWave = waveSelect.value;
+        waveSelect.addEventListener("change", () => {
+          currentWave = waveSelect.value;
+        });
+      }
+
+      clearBtn.addEventListener("click", () => {
+        stopAnimation();
+        stopSequencer();
+        clearGrid();
+      });
+
+      plusPresetBtn.addEventListener("click", () => {
+        stopAnimation();
+        stopSequencer();
+        applyPlusPreset();
+      });
+
+      randomBtn.addEventListener("click", () => {
+        stopAnimation();
+        stopSequencer();
+        generateLifePattern();
+      });
+
+      gridSizeBtn.addEventListener("click", cycleGridSize);
+      animateBtn.addEventListener("click", toggleAnimation);
+      musicBtn.addEventListener("click", toggleSequencer);
+      window.addEventListener("resize", updateBrandTextSize);
+
+      buildGrid();
+      applyPlusPreset();
+      updateGridLabel();
+      updateBrandTextSize();
+    })();
+  </script>
+</body>
+</html>

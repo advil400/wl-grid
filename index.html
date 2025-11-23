@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Circle Logo Grid Playground</title>
+  <title>W+L Grid</title>
   <style>
     :root {
       --grid-size: 5;
@@ -306,7 +306,7 @@
 <body>
   <main class="app">
     <header class="app-header">
-      <button id="gridSizeToggle" type="button" class="pill">5 × 5 grid</button>
+      <button id="gridSizeToggle" type="button" class="pill">5×5 grid</button>
     </header>
 
         <section class="logo-row">
@@ -803,7 +803,6 @@
 
       function startSequencer() {
         if (isSequencing) return;
-        stopAnimation();
 
         const ctx = getAudioContext();
         if (ctx.state === "suspended") {
